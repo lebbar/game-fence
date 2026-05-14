@@ -28,7 +28,7 @@
 **للمستخدمين** (بدون Python):
 
 - **رابط تنزيل مباشر (آخر إصدار من `GameFence.exe`):**  
-  [https://github.com/lebbar/game-fence/releases/latest/download/GameFence.exe](https://github.com/lebbar/game-fence/releases/latest/download/GameFence.exe)
+  [GameFence APP](https://github.com/lebbar/game-fence/releases/latest/download/GameFence.exe)
 
 - **صفحة الإصدارات:** [https://github.com/lebbar/game-fence/releases](https://github.com/lebbar/game-fence/releases)
 

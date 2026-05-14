@@ -28,7 +28,7 @@ Application **Windows** pour **limiter ou bloquer le lancement de programmes** s
 **Utilisateurs** (sans Python) :
 
 - **Lien direct (dernier `GameFence.exe`) :**  
-  [https://github.com/lebbar/game-fence/releases/latest/download/GameFence.exe](https://github.com/lebbar/game-fence/releases/latest/download/GameFence.exe)
+  [GameFence APP](https://github.com/lebbar/game-fence/releases/latest/download/GameFence.exe)
 
 - **Releases :** [https://github.com/lebbar/game-fence/releases](https://github.com/lebbar/game-fence/releases)
 
