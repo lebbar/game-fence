@@ -1,5 +1,5 @@
 # Game Fence
-
+<div dir="rtl">
 🌍 **اللغات**
 
 - 🇸🇦 **العربية** _(هذا الملف)_
@@ -27,8 +27,8 @@
 
 **للمستخدمين** (بدون Python):
 
-- **رابط تنزيل مباشر (آخر إصدار من `GameFence.exe`):**  
-  [GameFence APP](https://github.com/lebbar/game-fence/releases/latest/download/GameFence.exe)
+- **رابط تنزيل مباشر:**  [GameFence APP](https://github.com/lebbar/game-fence/releases/latest/download/GameFence.exe)
+  
 
 - **صفحة الإصدارات:** [https://github.com/lebbar/game-fence/releases](https://github.com/lebbar/game-fence/releases)
 
@@ -119,3 +119,4 @@ python main.py
 ---
 
 *مشروع شخصي — المساهمات وفتح المشاكل مرحب بها.*
+</div>

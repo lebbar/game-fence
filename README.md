@@ -27,8 +27,8 @@
 
 **End users** (no Python needed):
 
-- **Direct download (latest `GameFence.exe`):**  
-  [GameFence APP](https://github.com/lebbar/game-fence/releases/latest/download/GameFence.exe)
+- **Direct download :** [GameFence APP](https://github.com/lebbar/game-fence/releases/latest/download/GameFence.exe)  
+  
 
 - **Releases:** [https://github.com/lebbar/game-fence/releases](https://github.com/lebbar/game-fence/releases)
 
