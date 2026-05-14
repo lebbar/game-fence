@@ -1,0 +1,100 @@
+{
+  "rtl": false,
+  "font_ui": "Segoe UI",
+  "font_mono": "Consolas",
+  "weekday_abbr": ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+  "weekday_full": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
+
+  "app.title": "Game Fence — Time-based blocking",
+  "menu.file": "File",
+  "menu.quit": "Exit completely",
+  "menu.language": "Language",
+
+  "intro.line1": "Limits launching during the windows you define: matching processes are closed automatically.",
+  "intro.line21": "On startup the app stays hidden (no taskbar or notification area icon);",
+  "intro.line22": "use the global shortcut {hotkey} to show this window.",
+  "intro.line3": "Closing with × hides it again; monitoring keeps running.",
+
+  "watch.active": "Monitoring on",
+  "watch.interval": "   Interval (s):",
+  "watch.config": "(config: {path})",
+  "watch.time_zone": "Time zone:",
+  "watch.ref_time": "{dt} · {src}",
+  "watch.src_ntp": "NTP",
+  "watch.src_system": "PC",
+
+  "tree.col_active": "On",
+  "tree.col_name": "Name",
+  "tree.col_exe": "Executable",
+  "tree.col_plan": "Schedule (Mon→Sun)",
+  "tree.col_blocked": "Blocked?",
+
+  "yes": "Yes",
+  "no": "No",
+
+  "btn.add_rule": "Add rule…",
+  "btn.edit": "Edit…",
+  "btn.delete": "Delete",
+  "btn.save": "Save configuration",
+
+  "log.recent": "Recent log",
+
+  "msg.keyboard_title": "Missing « keyboard » module",
+  "msg.keyboard_body": "Install the package:\n\n  pip install keyboard\n\nto use the shortcut {hotkey} (the only way to open the UI — the app starts hidden).",
+
+  "msg.hotkey_title": "Global shortcut",
+  "msg.hotkey_body": "Cannot hook the keyboard ({hotkey}):\n{err}\n\nCheck antivirus blocking hooks, or run the app as Administrator.",
+
+  "msg.selection_title": "Selection",
+  "msg.selection_body": "Select a rule in the list.",
+
+  "msg.confirm_title": "Confirm",
+  "msg.confirm_delete": "Delete this rule?",
+
+  "msg.interval_error_title": "Error",
+  "msg.interval_error": "Invalid interval (integer between 5 and 600).",
+
+  "msg.dialog_open_title": "Window open",
+  "msg.dialog_open_body": "Close the open dialog first (rule editor, etc.).",
+
+  "log.saved": "Configuration saved",
+  "log.process_killed": "Process closed (blocked window): {title} ({exe})",
+
+  "rule.title": "Blocking rule",
+  "rule.enabled": "Rule enabled",
+  "rule.ok_hint": "OK = save this rule to the list",
+  "rule.cancel": "Cancel",
+  "rule.ok": "OK — validate",
+  "rule.display_name": "Display name:",
+  "rule.exe_file": "Executable file:",
+  "rule.browse": "Browse…",
+  "rule.hint": "Example: Mon/Tue/Thu = ‘Blocked all day’; other days ‘Access allowed only between…’ and the time ranges when the app may run (outside that, closure is possible).",
+  "rule.plan_frame": "Daily schedule — scroll if needed",
+  "rule.hours": "Times (HH:MM):",
+  "rule.legend": "[0] Executable blocked all day. [1] Blocked outside the range (end time exclusive; 24:00 allowed). [2] This rule does not apply that day. [3] Legacy: block only during the window.",
+  "rule.browse_title": "Choose an executable",
+  "rule.file_exe": "Executables",
+  "rule.file_all": "All files",
+
+  "rule.mode_0": "0 — Blocked all day",
+  "rule.mode_1": "1 — Access allowed only between… (otherwise may be closed)",
+  "rule.mode_2": "2 — No forced closure that day",
+  "rule.mode_3": "3 — Blocked only during the window",
+
+  "msg.validation_title": "Validation",
+  "msg.rule_exe_missing": "Enter the executable name (e.g. chrome.exe).",
+  "msg.rule_extension_title": "Extension",
+  "msg.rule_extension_body": "The file does not end in .exe. Continue?",
+  "msg.rule_interval_missing": "For {weekday}, enter start and end times.",
+  "msg.rule_start_invalid": "Invalid start time ({weekday}).",
+  "msg.rule_times_invalid": "Invalid times ({weekday}).",
+  "msg.rule_order_invalid": "Start time must be before end ({weekday}).",
+  "msg.rule_all_none": "All rows are ‘no closure’ — this rule will do nothing.",
+
+  "sched.free": "free",
+  "sched.block_day": "blocked day",
+  "sched.fmt_auth": "{abbr}: {start}–{end} (allowed window)",
+  "sched.fmt_legacy": "{abbr}: {start}–{end} (blocked during slot)",
+  "sched.unknown": "{abbr}: (unknown)",
+  "hotkey.display": "Ctrl+Shift+G"
+}

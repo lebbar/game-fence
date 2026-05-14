@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# PyInstaller (contient des chemins absolus locaux dans les .toc)
+build/
+dist/
+
+# Inno Setup — sortie locale du compilateur
+installer_output/
+
+# Secrets / env local
+.env
+.env.*
+*.pem
+
+# Journaux & débris
+*.log
+*.stackdump
+
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Éditeurs / IDE (optionnel, retirer une ligne si tu veux versionner la conf)
+.idea/
+.vscode/

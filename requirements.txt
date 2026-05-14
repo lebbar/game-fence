@@ -1,0 +1,3 @@
+keyboard>=0.13.5
+ntplib>=0.4.0
+

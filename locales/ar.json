@@ -1,0 +1,100 @@
+{
+  "rtl": true,
+  "font_ui": "Segoe UI",
+  "font_mono": "Consolas",
+  "weekday_abbr": ["الإثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت", "الأحد"],
+  "weekday_full": ["الإثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت", "الأحد"],
+
+  "app.title": "Game Fence — حظر برامج الألعاب",
+  "menu.file": "ملف",
+  "menu.quit": "إغلاق تماماً",
+  "menu.language": "اللغة",
+
+  "intro.line1": "قم بمنع تشغيل البرامج خلال فترات زمنية محددة: يتم إغلاق البرامج المطلوبة تلقائياً.",
+  "intro.line21": "عند بدء التشغيل، يظل التطبيق مخفياً (لا يظهر في شريط المهام)؛",
+  "intro.line22": " {hotkey} استخدم الاختصار لإظهار هذه النافذة ",
+  "intro.line3": "النقر على × يخفي النافذة مرة أخرى؛لكن المراقبة تظل قيد التشغيل.",
+
+  "watch.active": "المراقبة مفعلة",
+  "watch.interval": "   الفاصل الزمني (ثانية):",
+  "watch.config": "(الإعدادات: {path})",
+  "watch.time_zone": "المنطقة الزمنية:",
+  "watch.ref_time": "{dt} · {src}",
+  "watch.src_ntp": "NTP",
+  "watch.src_system": "الحاسوب",
+
+  "tree.col_active": "مفعل",
+  "tree.col_name": "الاسم",
+  "tree.col_exe": "الملف التنفيذي",
+  "tree.col_plan": "الجدول (إثنين←أحد)",
+  "tree.col_blocked": "محظور؟",
+
+  "yes": "نعم",
+  "no": "لا",
+
+  "btn.add_rule": "إضافة قاعدة",
+  "btn.edit": "تعديل",
+  "btn.delete": "حذف",
+  "btn.save": "حفظ الإعدادات",
+
+  "log.recent": "السجل الأخير",
+
+  "msg.keyboard_title": "وحدة « keyboard » مفقودة",
+  "msg.keyboard_body": "يرجى تثبيت الحزمة التالية:\n\n  pip install keyboard\n\nلتتمكن من استخدام الاختصار {hotkey} (الوسيلة الوحيدة لفتح الواجهة).",
+
+  "msg.hotkey_title": "اختصار النظام",
+  "msg.hotkey_body": "تعذر تفعيل اختصار لوحة المفاتيح ({hotkey}):\n{err}\n\nتأكد من عدم حظر برنامج الحماية للتطبيق، أو قم بتشغيله كمسؤول.",
+
+  "msg.selection_title": "تنبيه",
+  "msg.selection_body": "يرجى تحديد قاعدة من القائمة.",
+
+  "msg.confirm_title": "تأكيد",
+  "msg.confirm_delete": "هل تريد حذف هذه القاعدة؟",
+
+  "msg.interval_error_title": "خطأ",
+  "msg.interval_error": "الفاصل الزمني غير صحيح (يجب أن يكون رقماً بين 5 و 600).",
+
+  "msg.dialog_open_title": "نافذة مفتوحة",
+  "msg.dialog_open_body": "يرجى إغلاق النافذة المنبثقة أولاً (محرر القواعد، إلخ).",
+
+  "log.saved": "تم حفظ الإعدادات بنجاح",
+  "log.process_killed": "تم إنهاء العملية (نافذة محظورة): {title} ({exe})",
+
+  "rule.title": "قاعدة الحظر",
+  "rule.enabled": "تفعيل القاعدة",
+  "rule.ok_hint": "موافق = حفظ القاعدة الحالية في القائمة",
+  "rule.cancel": "إلغاء",
+  "rule.ok": "موافق — تأكيد",
+  "rule.display_name": "اسم العرض:",
+  "rule.exe_file": "الملف التنفيذي:",
+  "rule.browse": "استعراض...",
+  "rule.hint": "حدد الساعات المسموح فيها بالتشغيل",
+  "rule.plan_frame": "الجدول اليومي — استخدم التمرير إذا لزم الأمر",
+  "rule.hours": "الأوقات (HH:MM):",
+  "rule.legend": "[0] محظور طوال اليوم. [1] مسموح فقط خلال النطاق المختار. [2] القاعدة لا تنطبق في هذا اليوم. [3] قديم: يحظر فقط خلال النطاق المختار.",
+  "rule.browse_title": "اختر الملف التنفيذي",
+  "rule.file_exe": "برامج تنفيدية",
+  "rule.file_all": "كافة الملفات",
+
+  "rule.mode_0": "0 — محظور طوال اليوم",
+  "rule.mode_1": "1 — يسمح بالدخول فقط بين... (سيغلق في غير ذلك)",
+  "rule.mode_2": "2 — لا يوجد قيود في هذا اليوم",
+  "rule.mode_3": "3 — يحظر فقط خلال الفترة المحددة",
+
+  "msg.validation_title": "تحقق",
+  "msg.rule_exe_missing": "يرجى إدخال اسم الملف (مثلاً: chrome.exe).",
+  "msg.rule_extension_title": "امتداد الملف",
+  "msg.rule_extension_body": "الملف لا ينتهي بـ .exe. هل تريد المتابعة؟",
+  "msg.rule_interval_missing": "ليوم {weekday}، يرجى إدخال وقت البدء والانتهاء.",
+  "msg.rule_start_invalid": "وقت البدء غير صحيح ({weekday}).",
+  "msg.rule_times_invalid": "توقيت غير صحيح ({weekday}).",
+  "msg.rule_order_invalid": "وقت البدء يجب أن يكون قبل وقت الانتهاء ({weekday}).",
+  "msg.rule_all_none": "لم يتم تفعيل أي حظر — هذه القاعدة لن تؤثر على البرنامج.",
+
+  "sched.free": "متاح",
+  "sched.block_day": "محظور طوال اليوم",
+  "sched.fmt_auth": "{abbr}: {start}–{end} (نافذة مسموحة)",
+  "sched.fmt_legacy": "{abbr}: {start}–{end} (حظر أثناء المدة)",
+  "sched.unknown": "{abbr}: (غير معروف)",
+  "hotkey.display": "Ctrl+Shift+G"
+}

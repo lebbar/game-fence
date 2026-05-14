@@ -1,0 +1,100 @@
+{
+  "rtl": false,
+  "font_ui": "Segoe UI",
+  "font_mono": "Consolas",
+  "weekday_abbr": ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"],
+  "weekday_full": ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"],
+
+  "app.title": "Game Fence — Blocage par horaire",
+  "menu.file": "Fichier",
+  "menu.quit": "Quitter complètement",
+  "menu.language": "Langue",
+
+  "intro.line1": "Limite le lancement pendant les créneaux définies : les processus ciblés sont fermés automatiquement.",
+  "intro.line21": "Au démarrage l’application reste masquée (sans icône dans la barre des tâches ni zone de notification) ;",
+  "intro.line22": "pour afficher cette fenêtre uniquement avec le raccourci global {hotkey}.",
+  "intro.line3": "Fermer avec × masque encore : la surveillance continue.",
+
+  "watch.active": "Surveillance active",
+  "watch.interval": "   Intervalle (s) :",
+  "watch.config": "(config : {path})",
+  "watch.time_zone": "Fuseau :",
+  "watch.ref_time": "{dt} · {src}",
+  "watch.src_ntp": "NTP",
+  "watch.src_system": "PC",
+
+  "tree.col_active": "Actif",
+  "tree.col_name": "Nom",
+  "tree.col_exe": "Exécutable",
+  "tree.col_plan": "Planning (lun→dim)",
+  "tree.col_blocked": "Bloqué ?",
+
+  "yes": "Oui",
+  "no": "Non",
+
+  "btn.add_rule": "Ajouter une règle…",
+  "btn.edit": "Modifier…",
+  "btn.delete": "Supprimer",
+  "btn.save": "Enregistrer la configuration",
+
+  "log.recent": "Journal récent",
+
+  "msg.keyboard_title": "Module « keyboard » absent",
+  "msg.keyboard_body": "Installez le paquet :\n\n  pip install keyboard\n\npour utiliser le raccourci {hotkey} (seul moyen d’ouvrir l’interface : l’app démarre masquée).",
+
+  "msg.hotkey_title": "Raccourci global",
+  "msg.hotkey_body": "Impossible de surveiller le clavier ({hotkey}) :\n{err}\n\nVérifiez un antivirus qui bloquerait les hooks, ou lancez l’application « en tant qu’administrateur ».",
+
+  "msg.selection_title": "Sélection",
+  "msg.selection_body": "Sélectionnez une règle dans la liste.",
+
+  "msg.confirm_title": "Confirmer",
+  "msg.confirm_delete": "Supprimer cette règle ?",
+
+  "msg.interval_error_title": "Erreur",
+  "msg.interval_error": "Intervalle invalide (nombre entier entre 5 et 600).",
+
+  "msg.dialog_open_title": "Fenêtre ouverte",
+  "msg.dialog_open_body": "Fermez d’abord la boîte de dialogue en cours (règle, etc.).",
+
+  "log.saved": "Configuration enregistrée",
+  "log.process_killed": "Processus fermé (plage bloquée) : {title} ({exe})",
+
+  "rule.title": "Règle de blocage",
+  "rule.enabled": "Règle activée",
+  "rule.ok_hint": "OK = enregistrer cette règle dans la liste",
+  "rule.cancel": "Annuler",
+  "rule.ok": "OK — valider",
+  "rule.display_name": "Nom affiché :",
+  "rule.exe_file": "Fichier exécutable :",
+  "rule.browse": "Parcourir…",
+  "rule.hint": "Exemple attendu : lundi/mardi/jeudi = « Bloqué toute la journée » ; pour les autres jours, « Accès autorisé seulement entre … » puis les créneaux où le jeu peut tourner (en dehors, fermeture possible).",
+  "rule.plan_frame": "Planning par jour — faites défiler si besoin",
+  "rule.hours": "Heures (HH:MM) :",
+  "rule.legend": "[0] L'exécutable est fermé tout le jour. [1] Fermé en dehors de la plage (fin « à » exclusive ; 24:00 possible). [2] Cette règle n’intervient pas. [3] Ancien comportement : fermeture pendant la plage uniquement.",
+  "rule.browse_title": "Choisir un exécutable",
+  "rule.file_exe": "Exécutables",
+  "rule.file_all": "Tous les fichiers",
+
+  "rule.mode_0": "0 — Bloqué toute la journée",
+  "rule.mode_1": "1 — Accès autorisé seulement entre… (sinon fermeture possible)",
+  "rule.mode_2": "2 — Aucune fermeture forcée ce jour",
+  "rule.mode_3": "3 — Bloquer seulement pendant la fenêtre",
+
+  "msg.validation_title": "Validation",
+  "msg.rule_exe_missing": "Indiquez le nom de l’exécutable (ex. chrome.exe).",
+  "msg.rule_extension_title": "Extension",
+  "msg.rule_extension_body": "Le fichier ne se termine pas par .exe. Continuer ?",
+  "msg.rule_interval_missing": "Pour {weekday}, indique début et fin d’intervalle.",
+  "msg.rule_start_invalid": "Heure de début invalide ({weekday}).",
+  "msg.rule_times_invalid": "Heures invalides ({weekday}).",
+  "msg.rule_order_invalid": "L’heure de début doit être avant la fin ({weekday}).",
+  "msg.rule_all_none": "Toutes les lignes sont « aucune fermeture » — la règle ne servira pas.",
+
+  "sched.free": "libre",
+  "sched.block_day": "bloqué jour",
+  "sched.fmt_auth": "{abbr} : {start}–{end} (plage autorisée)",
+  "sched.fmt_legacy": "{abbr} : {start}–{end} (bloqué pendant la plage)",
+  "sched.unknown": "{abbr} : (inconnu)",
+  "hotkey.display": "Ctrl+Shift+G"
+}
