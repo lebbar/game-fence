@@ -28,10 +28,9 @@
 **للمستخدمين** (بدون Python):
 
 - **رابط تنزيل مباشر (آخر إصدار من `GameFence.exe`):**  
-  `https://github.com/<owner>/<repo>/releases/latest/download/GameFence.exe`  
-  استبدل `<owner>` و`<repo>` بمسار مستودعك على GitHub (كما في عنوان الاستنساخ).
+  [https://github.com/lebbar/game-fence/releases/latest/download/GameFence.exe](https://github.com/lebbar/game-fence/releases/latest/download/GameFence.exe)
 
-- **صفحة الإصدارات:** `https://github.com/<owner>/<repo>/releases/latest`
+- **صفحة الإصدارات:** [https://github.com/lebbar/game-fence/releases](https://github.com/lebbar/game-fence/releases)
 
 ### نشر إصدار (للمشرفين)
 

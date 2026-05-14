@@ -28,10 +28,9 @@
 **End users** (no Python needed):
 
 - **Direct download (latest `GameFence.exe`):**  
-  `https://github.com/<owner>/<repo>/releases/latest/download/GameFence.exe`  
-  Replace `<owner>` and `<repo>` with your GitHub path (same values as in the clone URL).
+  [https://github.com/lebbar/game-fence/releases/latest/download/GameFence.exe](https://github.com/lebbar/game-fence/releases/latest/download/GameFence.exe)
 
-- **Releases page:** `https://github.com/<owner>/<repo>/releases/latest`
+- **Releases:** [https://github.com/lebbar/game-fence/releases](https://github.com/lebbar/game-fence/releases)
 
 ### Publishing a release (maintainers)
 

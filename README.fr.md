@@ -28,10 +28,9 @@ Application **Windows** pour **limiter ou bloquer le lancement de programmes** s
 **Utilisateurs** (sans Python) :
 
 - **Lien direct (dernier `GameFence.exe`) :**  
-  `https://github.com/<propriétaire>/<dépôt>/releases/latest/download/GameFence.exe`  
-  Remplace `<propriétaire>` et `<dépôt>` par ton chemin GitHub (comme dans l’URL de clone).
+  [https://github.com/lebbar/game-fence/releases/latest/download/GameFence.exe](https://github.com/lebbar/game-fence/releases/latest/download/GameFence.exe)
 
-- **Page Releases :** `https://github.com/<propriétaire>/<dépôt>/releases/latest`
+- **Releases :** [https://github.com/lebbar/game-fence/releases](https://github.com/lebbar/game-fence/releases)
 
 ### Publier une release (mainteneur)
 
