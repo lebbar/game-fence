@@ -7,6 +7,8 @@
 
   "app.title": "Game Fence — Time-based blocking",
   "menu.file": "File",
+  "menu.access_log": "Open log…",
+  "menu.clock_compare_log": "Clock / time zone log…",
   "menu.quit": "Exit completely",
   "menu.language": "Language",
 
@@ -38,6 +40,34 @@
   "btn.save": "Save configuration",
 
   "log.recent": "Recent log",
+
+  "access_log.title": "Launch log (tracked executables)",
+  "access_log.col_time": "Date & time",
+  "access_log.col_exe": "Executable",
+  "access_log.col_name": "Display name",
+  "access_log.col_event": "Event",
+  "access_log.kind_opened": "Opened (allowed window)",
+  "access_log.kind_attempt_blocked": "Launch attempt (blocked window)",
+  "access_log.refresh": "Refresh",
+  "access_log.empty": "(no entries yet)",
+  "access_log.hint": "Entries are saved to: {path}",
+
+  "clock_compare.title": "Log — clock & time zone",
+  "clock_compare.settings_frame": "Monitoring",
+  "clock_compare.enable": "Monitor reference wall vs PC local",
+  "clock_compare.zone_label": "Reference wall-clock offset:",
+  "clock_compare.settings_help": "Rows saved to the log file (table below) flag large gaps between the reference wall time and the PC local time; changing date or time can be used to work around blocked schedules. The bold banner below summarizes whether such behavior was detected for the current week.",
+  "clock_compare.settings_help_2":"",
+  "clock_compare.tamper_loading": "…",
+  "clock_compare.tamper_yes": "The user changed the PC date or time this calendar week (possible workaround attempt).",
+  "clock_compare.tamper_no": "No indication that the user tried to change the PC date or time this week.",
+  "clock_compare.col_checked_at": "Check (UTC)",
+  "clock_compare.col_skew": "Wall gap (s)",
+  "clock_compare.col_zone": "Ref. offset",
+  "clock_compare.col_reference": "Reference (wall)",
+  "clock_compare.col_system_local": "System (local)",
+  "clock_compare.refresh": "Refresh / measure",
+  "clock_compare.empty": "(no skew events recorded yet)",
 
   "msg.keyboard_title": "Missing « keyboard » module",
   "msg.keyboard_body": "Install the package:\n\n  pip install keyboard\n\nto use the shortcut {hotkey} (the only way to open the UI — the app starts hidden).",

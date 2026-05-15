@@ -7,6 +7,8 @@
 
   "app.title": "Game Fence — حظر برامج الألعاب",
   "menu.file": "ملف",
+  "menu.access_log": "سجل عمليات الفتح",
+  "menu.clock_compare_log": "سجل الساعة والمنطقة",
   "menu.quit": "إغلاق تماماً",
   "menu.language": "اللغة",
 
@@ -38,6 +40,34 @@
   "btn.save": "حفظ الإعدادات",
 
   "log.recent": "السجل الأخير",
+
+  "access_log.title": "سجل فتح البرامج (وفق القواعد)",
+  "access_log.col_time": "التاريخ والوقت",
+  "access_log.col_exe": "الملف التنفيذي",
+  "access_log.col_name": "اسم العرض",
+  "access_log.col_event": "الحدث",
+  "access_log.kind_opened": "تم الفتح (فترة مسموحة)",
+  "access_log.kind_attempt_blocked": "محاولة فتح (فترة محظورة)",
+  "access_log.refresh": "تحديث",
+  "access_log.empty": "(لا توجد إدخالات بعد)",
+  "access_log.hint": "يُحفظ السجل في: {path}",
+
+  "clock_compare.title": "سجل — الساعة والمنطقة",
+  "clock_compare.settings_frame": "المراقبة",
+  "clock_compare.enable": "مراقبة فرق المرجع المحلي عن وقت الجهاز",
+  "clock_compare.zone_label": "عرض وقت المرجع (UTC±):",
+  "clock_compare.settings_help_2": "الصفوف المحفوظة في ملف السجل (الجدول أدناه) تبيّن الفروق الكبيرة بين وقت المرجع المحلي ووقت جهاز الكمبيوتر؛",
+  "clock_compare.settings_help": "قد يُستخدم تغيير التاريخ أو الوقت لتجاوز الجداول",
+  "clock_compare.tamper_loading": "…",
+  "clock_compare.tamper_yes": "يبدو أن المستخدم غيّر تاريخ أو وقت الكمبيوتر هذا الأسبوع (ربما لتجاوز القيود).",
+  "clock_compare.tamper_no": "لا يوجد مؤشر على أن المستخدم حاول تغيير تاريخ أو وقت الكمبيوتر هذا الأسبوع.",
+  "clock_compare.col_checked_at": "التحقق (UTC)",
+  "clock_compare.col_skew": "فرق مرجع/محلي (ث)",
+  "clock_compare.col_zone": "منطقة المرجع",
+  "clock_compare.col_reference": "المرجع (محلي مرجعي)",
+  "clock_compare.col_system_local": "النظام (محلي)",
+  "clock_compare.refresh": "تحديث / قياس",
+  "clock_compare.empty": "(لا توجد أحداث فرق مسجلة بعد)",
 
   "msg.keyboard_title": "وحدة « keyboard » مفقودة",
   "msg.keyboard_body": "يرجى تثبيت الحزمة التالية:\n\n  pip install keyboard\n\nلتتمكن من استخدام الاختصار {hotkey} (الوسيلة الوحيدة لفتح الواجهة).",

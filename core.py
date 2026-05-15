@@ -14,9 +14,10 @@ import json
 import os
 import subprocess
 import sys
+import threading
 import uuid
 from dataclasses import asdict, dataclass
-from datetime import datetime, time
+from datetime import datetime, time, timedelta, timezone
 from pathlib import Path
 from typing import Any, Optional
 
@@ -33,6 +34,19 @@ def _local_config_dir() -> Path:
 
 CONFIG_DIR = _local_config_dir()
 CONFIG_PATH = CONFIG_DIR / "config.json"
+ACCESS_LOG_PATH = CONFIG_DIR / "access_log.json"
+CLOCK_COMPARE_LOG_PATH = CONFIG_DIR / "clock_compare_log.json"
+
+# Écart NTP (référence) vs horloge système — au-delà de ce seuil on journalise (secondes).
+_CLOCK_COMPARE_SKEW_THRESHOLD_SEC = 300
+CLOCK_COMPARE_POLL_INTERVAL_SEC = 300
+
+ACCESS_KIND_OPENED = "opened"
+ACCESS_KIND_ATTEMPT_BLOCKED = "attempt_blocked"
+_ACCESS_LOG_LOCK = threading.RLock()
+_CLOCK_COMPARE_LOG_LOCK = threading.RLock()
+_MAX_ACCESS_LOG_ENTRIES = 2000
+_MAX_CLOCK_COMPARE_LOG_ENTRIES = 500
 
 # Une entrée par jour (lun..dim).
 DaySlot = Optional[dict[str, Any]]
@@ -41,6 +55,24 @@ KIND_BLOCK_ALL = "block_all_day"
 KIND_AUTHORIZE_WINDOW = "authorize_window"
 KIND_LEGACY_BLOCK_INSIDE = "legacy_block_window"
 KIND_MARKER = "kind"
+
+
+def _bool_from_json(value: Any, default: bool = False) -> bool:
+    """Interprète un booléen JSON sans traiter la chaîne \"false\" comme True (piège de bool(...))."""
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return value != 0
+    if isinstance(value, str):
+        s = value.strip().lower()
+        if s in ("1", "true", "yes", "on"):
+            return True
+        if s in ("0", "false", "no", "off", ""):
+            return False
+        return default
+    if value is None:
+        return default
+    return default
 
 
 def default_rule_schedule() -> list[DaySlot]:
@@ -136,6 +168,9 @@ class AppConfig:
     ui_locale: str = "fr"
     # Fuseau façon UTC±N (-12 … +14), planning sans DST.
     time_zone_offset_hours: int = 1
+    # Comparaison horloge : écart NTP vs système ; affichage murale de référence en UTC±N.
+    clock_compare_enabled: bool = False
+    clock_compare_offset_hours: int = 1
 
     def to_json(self) -> dict[str, Any]:
         return {
@@ -143,6 +178,8 @@ class AppConfig:
             "global_check_interval_seconds": self.global_check_interval_seconds,
             "ui_locale": self.ui_locale,
             "time_zone_offset_hours": self.time_zone_offset_hours,
+            "clock_compare_enabled": self.clock_compare_enabled,
+            "clock_compare_offset_hours": self.clock_compare_offset_hours,
         }
 
     @staticmethod
@@ -155,11 +192,18 @@ class AppConfig:
         except (TypeError, ValueError):
             tz_h = 1
         tz_h = max(-12, min(14, tz_h))
+        try:
+            cco = int(d.get("clock_compare_offset_hours", tz_h))
+        except (TypeError, ValueError):
+            cco = tz_h
+        cco = max(-12, min(14, cco))
         return AppConfig(
             rules=rules,
             global_check_interval_seconds=int(d.get("global_check_interval_seconds", 15)),
             ui_locale=locale,
             time_zone_offset_hours=tz_h,
+            clock_compare_enabled=_bool_from_json(d.get("clock_compare_enabled"), False),
+            clock_compare_offset_hours=cco,
         )
 
 
@@ -263,7 +307,14 @@ def is_rule_blocking_now(rule: BlockRule, cfg: AppConfig) -> bool:
 
 
 def default_config() -> AppConfig:
-    return AppConfig(rules=[], global_check_interval_seconds=15, ui_locale="fr", time_zone_offset_hours=1)
+    return AppConfig(
+        rules=[],
+        global_check_interval_seconds=15,
+        ui_locale="fr",
+        time_zone_offset_hours=1,
+        clock_compare_enabled=False,
+        clock_compare_offset_hours=1,
+    )
 
 
 def load_config() -> AppConfig:
@@ -285,10 +336,245 @@ def save_config(cfg: AppConfig) -> None:
     )
 
 
+def _enabled_rules_grouped_by_exe(cfg: AppConfig) -> dict[str, list[BlockRule]]:
+    """Clé = exe en minuscules ; conserve l’ordre des règles pour le nom affiché."""
+    out: dict[str, list[BlockRule]] = {}
+    for rule in cfg.rules:
+        if not rule.enabled:
+            continue
+        exe = rule.exe_name.strip()
+        if not exe:
+            continue
+        out.setdefault(exe.lower(), []).append(rule)
+    return out
+
+
+def load_access_log_entries() -> list[dict[str, Any]]:
+    """Charge les entrées du journal d’accès (les plus anciennes en premier)."""
+    CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+    with _ACCESS_LOG_LOCK:
+        if not ACCESS_LOG_PATH.is_file():
+            return []
+        try:
+            data = json.loads(ACCESS_LOG_PATH.read_text(encoding="utf-8"))
+            raw = data.get("entries") if isinstance(data, dict) else None
+            if not isinstance(raw, list):
+                return []
+            return [x for x in raw if isinstance(x, dict)]
+        except (json.JSONDecodeError, OSError, TypeError):
+            return []
+
+
+def append_access_log_entries(entries: list[dict[str, Any]]) -> None:
+    """Ajoute des entrées et limite la taille du fichier (FIFO)."""
+    if not entries:
+        return
+    CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+    with _ACCESS_LOG_LOCK:
+        current = load_access_log_entries()
+        current.extend(entries)
+        if len(current) > _MAX_ACCESS_LOG_ENTRIES:
+            current = current[-_MAX_ACCESS_LOG_ENTRIES :]
+        ACCESS_LOG_PATH.write_text(
+            json.dumps({"entries": current}, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+
+
+def scan_rule_exe_access_events(
+    cfg: AppConfig, prev_running: dict[str, bool]
+) -> tuple[list[dict[str, Any]], dict[str, bool]]:
+    """
+    Détecte le passage « non en cours d’exécution → en cours » pour chaque exe présent
+    dans une règle activée. Enregistre la date/heure de référence (planning UTC±N).
+
+    - opened : processus détecté alors qu’aucune règle pour cet exe ne bloque à cet instant.
+    - attempt_blocked : au moins une règle pour cet exe impose un blocage à cet instant.
+    """
+    new_rows: list[dict[str, Any]] = []
+    now = reference_wall_clock_naive(cfg)
+    ts_iso = now.replace(microsecond=0).isoformat(sep=" ")
+    by_exe = _enabled_rules_grouped_by_exe(cfg)
+    next_prev: dict[str, bool] = {}
+
+    for exe_key, rules in by_exe.items():
+        exe = rules[0].exe_name.strip()
+        running = is_process_running(exe)
+        was = prev_running.get(exe_key, False)
+
+        if running and not was:
+            blocking = any(is_rule_blocking_now(r, cfg) for r in rules)
+            kind = ACCESS_KIND_ATTEMPT_BLOCKED if blocking else ACCESS_KIND_OPENED
+            display = next((r.display_name.strip() for r in rules if r.display_name.strip()), exe)
+            new_rows.append(
+                {
+                    "ts": ts_iso,
+                    "exe": exe,
+                    "display_name": display,
+                    "kind": kind,
+                }
+            )
+
+        next_prev[exe_key] = running
+
+    return new_rows, next_prev
+
+
+def clock_compare_run(
+    cfg: AppConfig, *, emit_log_entry: bool = True
+) -> tuple[dict[str, Any], Optional[dict[str, Any]]]:
+    """
+    Compare l’heure murale de référence (instant NTP projeté en UTC±N choisi) avec l’heure locale Windows.
+
+    Retourne (statut pour affichage UI, entrée fichier ou None).
+    L’entrée n’est produite que si emit_log_entry est True, surveillance active et
+    |mur réf. − locale PC| > seuil (5 minutes).
+
+    L’écart UTC réseau vs système est affiché à titre indicatif uniquement.
+    """
+    clock_sync.maybe_resync_ntp()
+    ntp_utc = clock_sync.effective_utc_now()
+    sys_utc = datetime.now(timezone.utc)
+    utc_skew_sec = abs((ntp_utc - sys_utc).total_seconds())
+    try:
+        off = int(cfg.clock_compare_offset_hours)
+    except (TypeError, ValueError):
+        off = cfg.time_zone_offset_hours
+    off = max(-12, min(14, off))
+    ref_wall = clock_sync.wall_clock_naive_for_offset_hours(ntp_utc, off).replace(microsecond=0)
+    pc_wall = datetime.now().replace(microsecond=0)
+    wall_skew_sec = abs((ref_wall - pc_wall).total_seconds())
+    status: dict[str, Any] = {
+        "utc_skew_seconds": utc_skew_sec,
+        "utc_skew_seconds_int": int(utc_skew_sec),
+        "wall_skew_seconds": wall_skew_sec,
+        "wall_skew_seconds_int": int(wall_skew_sec),
+        "ntp_utc": ntp_utc.replace(microsecond=0).strftime("%Y-%m-%d %H:%M:%SZ"),
+        "sys_utc": sys_utc.replace(microsecond=0).strftime("%Y-%m-%d %H:%M:%SZ"),
+        "reference_wall": ref_wall.isoformat(sep=" "),
+        "system_local_wall": pc_wall.isoformat(sep=" "),
+        "threshold_sec": _CLOCK_COMPARE_SKEW_THRESHOLD_SEC,
+        "would_log": wall_skew_sec > _CLOCK_COMPARE_SKEW_THRESHOLD_SEC,
+        "logging_enabled": cfg.clock_compare_enabled,
+    }
+    entry: Optional[dict[str, Any]] = None
+    if emit_log_entry and cfg.clock_compare_enabled and wall_skew_sec > _CLOCK_COMPARE_SKEW_THRESHOLD_SEC:
+        checked = datetime.now(timezone.utc).replace(microsecond=0)
+        entry = {
+            "checked_at": checked.isoformat().replace("+00:00", "Z"),
+            "skew_seconds": int(wall_skew_sec),
+            "utc_skew_seconds": int(utc_skew_sec),
+            "reference_wall": ref_wall.isoformat(sep=" "),
+            "system_local_wall": pc_wall.isoformat(sep=" "),
+            "compare_utc_hours": off,
+        }
+    return status, entry
+
+
+def maybe_clock_compare_log_entry(cfg: AppConfig) -> Optional[dict[str, Any]]:
+    _, entry = clock_compare_run(cfg, emit_log_entry=True)
+    return entry
+
+
+def load_clock_compare_log_entries() -> list[dict[str, Any]]:
+    CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+    with _CLOCK_COMPARE_LOG_LOCK:
+        if not CLOCK_COMPARE_LOG_PATH.is_file():
+            return []
+        try:
+            data = json.loads(CLOCK_COMPARE_LOG_PATH.read_text(encoding="utf-8"))
+            raw = data.get("entries") if isinstance(data, dict) else None
+            if not isinstance(raw, list):
+                return []
+            return [x for x in raw if isinstance(x, dict)]
+        except (json.JSONDecodeError, OSError, TypeError):
+            return []
+
+
+def append_clock_compare_log_entries(entries: list[dict[str, Any]]) -> None:
+    if not entries:
+        return
+    CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+    with _CLOCK_COMPARE_LOG_LOCK:
+        current = load_clock_compare_log_entries()
+        current.extend(entries)
+        if len(current) > _MAX_CLOCK_COMPARE_LOG_ENTRIES:
+            current = current[-_MAX_CLOCK_COMPARE_LOG_ENTRIES:]
+        CLOCK_COMPARE_LOG_PATH.write_text(
+            json.dumps({"entries": current}, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+
+
 def _subprocess_flags() -> int:
     if sys.platform == "win32":
         return getattr(subprocess, "CREATE_NO_WINDOW", 0)
     return 0
+
+
+def calendar_week_start_local() -> datetime:
+    """Lundi 00:00:00 heure locale (semaine ISO « civile » alignée sur weekday Python)."""
+    now = datetime.now()
+    return (now - timedelta(days=now.weekday())).replace(hour=0, minute=0, second=0, microsecond=0)
+
+
+def windows_system_time_changed_this_calendar_week() -> bool:
+    """
+    True si le journal Sécurité Windows contient au moins un événement 4616
+    (« The system time was changed ») depuis le lundi local.
+
+    Nécessite en principe la stratégie d’audit « Audit Security State Change » (succès).
+    Si le journal est inaccessible ou l’audit absent : False (message « pas de tentative »).
+    """
+    if sys.platform != "win32":
+        return False
+    start = calendar_week_start_local()
+    start_s = start.strftime("%Y-%m-%d %H:%M:%S")
+    cmd = (
+        f"$start = [datetime]::ParseExact('{start_s}','yyyy-MM-dd HH:mm:ss',$null); "
+        "$ev = Get-WinEvent -FilterHashtable @{LogName='Security'; Id=4616; StartTime=$start} "
+        "-MaxEvents 1 -ErrorAction SilentlyContinue; "
+        "if ($null -ne $ev) { '1' } else { '0' }"
+    )
+    try:
+        r = subprocess.run(
+            ["powershell", "-NoProfile", "-NonInteractive", "-Command", cmd],
+            capture_output=True,
+            text=True,
+            timeout=45,
+            creationflags=_subprocess_flags(),
+        )
+        out = (r.stdout or "").strip()
+        return out == "1"
+    except (subprocess.TimeoutExpired, OSError):
+        return False
+
+
+def clock_compare_log_has_entries_this_calendar_week() -> bool:
+    """True si clock_compare_log.json contient au moins une entrée depuis le lundi 00:00 local."""
+    week_start = calendar_week_start_local()
+    for e in load_clock_compare_log_entries():
+        raw = str(e.get("checked_at", "") or "").strip()
+        if not raw:
+            continue
+        try:
+            dt = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+            local_naive = dt.astimezone().replace(tzinfo=None)
+        except ValueError:
+            continue
+        if local_naive >= week_start:
+            return True
+    return False
+
+
+def pc_clock_tamper_banner_red_this_week() -> bool:
+    """
+    Message rouge si une ligne figure dans le journal horloge (fichier) depuis le lundi local,
+    ou si Windows journalise une modification d’heure (4616).
+    """
+    return clock_compare_log_has_entries_this_calendar_week() or windows_system_time_changed_this_calendar_week()
 
 
 def is_process_running(exe_name: str) -> bool:

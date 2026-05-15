@@ -6,6 +6,7 @@ from __future__ import annotations
 import threading
 import time as time_mod
 import tkinter as tk
+import tkinter.font as tkfont
 from tkinter import filedialog, messagebox, ttk
 from typing import Any, Callable, Optional
 
@@ -19,6 +20,8 @@ except ImportError:
     keyboard = None  # type: ignore[assignment]
 
 from core import (
+    ACCESS_LOG_PATH,
+    CLOCK_COMPARE_POLL_INTERVAL_SEC,
     CONFIG_PATH,
     AppConfig,
     BlockRule,
@@ -26,18 +29,26 @@ from core import (
     KIND_BLOCK_ALL,
     KIND_LEGACY_BLOCK_INSIDE,
     KIND_MARKER,
+    append_access_log_entries,
+    append_clock_compare_log_entries,
     default_rule_schedule,
     end_is_end_of_calendar_day,
     enforce_rules,
     is_rule_blocking_now,
+    load_access_log_entries,
+    load_clock_compare_log_entries,
     load_config,
+    clock_compare_run,
     normalize_schedule,
     parse_clock,
     reference_wall_clock_naive,
     save_config,
+    scan_rule_exe_access_events,
+    pc_clock_tamper_banner_red_this_week,
 )
 from i18n import (
     attach_rtl_combobox_alignment,
+    ensure_compact_treeview_style,
     hotkey_display,
     hotkey_keyword,
     install_locale,
@@ -376,21 +387,430 @@ class RuleEditor(tk.Toplevel):
         self.destroy()
 
 
+def _access_event_label(kind: str) -> str:
+    key = f"access_log.kind_{kind}"
+    text = tr(key)
+    return text if text != key else kind
+
+
+class AccessLogWindow(tk.Toplevel):
+    """Liste des ouvertures / tentatives pour les exécutables suivis par les règles."""
+
+    def __init__(self, parent: tk.Tk) -> None:
+        super().__init__(parent)
+        self.title(tr("access_log.title"))
+        self._ui_font = ui_font_tuple(parent)
+        rtl = is_rtl()
+        self.minsize(720, 420)
+        self.geometry("820x480")
+
+        outer = ttk.Frame(self, padding=(12, 12, 12, 8))
+        outer.pack(fill=tk.BOTH, expand=True)
+
+        hint = ttk.Label(
+            outer,
+            text=tr("access_log.hint", path=str(ACCESS_LOG_PATH)),
+            foreground="#555",
+            font=self._ui_font,
+            wraplength=780,
+            justify=tk_justify_paragraph(),
+        )
+        hint.pack(fill=tk.X, anchor=tk_align_text(), pady=(0, 8))
+
+        btn_row = ttk.Frame(outer)
+        btn_row.pack(fill=tk.X, pady=(0, 8))
+        if rtl:
+            ttk.Button(btn_row, text=tr("access_log.refresh"), command=self._reload).pack(side=tk.RIGHT)
+        else:
+            ttk.Button(btn_row, text=tr("access_log.refresh"), command=self._reload).pack(side=tk.LEFT)
+
+        mid = ttk.Frame(outer)
+        mid.pack(fill=tk.BOTH, expand=True)
+
+        col_defs: list[tuple[str, str, int]] = [
+            ("ts", tr("access_log.col_time"), 155),
+            ("exe", tr("access_log.col_exe"), 130),
+            ("name", tr("access_log.col_name"), 140),
+            ("event", tr("access_log.col_event"), 260),
+        ]
+        if rtl:
+            col_defs = list(reversed(col_defs))
+        cols = tuple(d[0] for d in col_defs)
+        self._tree_cols: tuple[str, ...] = cols
+
+        self._tree = ttk.Treeview(
+            mid,
+            columns=cols,
+            show="headings",
+            selectmode="browse",
+            style=ensure_compact_treeview_style(parent),
+        )
+        col_anchor = tk.E if rtl else tk.W
+        for cid, header, w in col_defs:
+            self._tree.heading(cid, text=header)
+            self._tree.column(cid, width=w, anchor=col_anchor)
+
+        sb = ttk.Scrollbar(mid, orient=tk.VERTICAL, command=self._tree.yview)
+        self._tree.configure(yscrollcommand=sb.set)
+        if rtl:
+            sb.pack(side=tk.LEFT, fill=tk.Y)
+            self._tree.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
+        else:
+            self._tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+            sb.pack(side=tk.RIGHT, fill=tk.Y)
+
+        self.transient(parent)
+        self.protocol("WM_DELETE_WINDOW", self.destroy)
+        self._reload()
+        try:
+            x = parent.winfo_rootx() + 40
+            y = parent.winfo_rooty() + 28
+            self.geometry(f"+{x}+{y}")
+        except tk.TclError:
+            pass
+
+    def _reload(self) -> None:
+        for i in self._tree.get_children():
+            self._tree.delete(i)
+        rows = load_access_log_entries()
+        order = self._tree_cols
+        if not rows:
+            row_empty = {"ts": tr("access_log.empty"), "exe": "", "name": "", "event": ""}
+            self._tree.insert("", tk.END, values=tuple(row_empty[c] for c in order))
+            return
+        for e in reversed(rows):
+            ts = str(e.get("ts", "") or "")
+            exe = str(e.get("exe", "") or "")
+            dn = str(e.get("display_name", "") or "")
+            kind = str(e.get("kind", "") or "")
+            ev = _access_event_label(kind)
+            row_map = {"ts": ts, "exe": exe, "name": dn, "event": ev}
+            vals = tuple(row_map[c] for c in order)
+            self._tree.insert("", tk.END, values=vals)
+
+
+class ClockCompareWindow(tk.Toplevel):
+    """Journal horloge : statut changement d’heure Windows (semaine civile) et tableau des mesures."""
+
+    def __init__(self, app: tk.Tk) -> None:
+        super().__init__(app)
+        self._app = app
+        self.title(tr("clock_compare.title"))
+        self._ui_font = ui_font_tuple(app)
+        rtl = is_rtl()
+        self.minsize(780, 460)
+        self.geometry("900x520")
+
+        cfg: AppConfig = app._cfg  # type: ignore[attr-defined]
+
+        outer = ttk.Frame(self, padding=(12, 12, 12, 8))
+        outer.pack(fill=tk.BOTH, expand=True)
+
+        settings = ttk.LabelFrame(outer, text=tr("clock_compare.settings_frame"), padding=8)
+        settings.pack(fill=tk.X, pady=(0, 8))
+
+        self._enabled_var = tk.BooleanVar(value=cfg.clock_compare_enabled)
+        row1 = ttk.Frame(settings)
+        row1.pack(fill=tk.X)
+        self._compare_tz_combo = ttk.Combobox(
+            row1,
+            values=clock_sync.timezone_choice_labels(),
+            state="readonly",
+            width=10,
+            font=self._ui_font,
+        )
+        tz_h = max(-12, min(14, int(cfg.clock_compare_offset_hours)))
+        self._compare_tz_combo.current(tz_h + 12)
+        if is_rtl():
+            attach_rtl_combobox_alignment(self._compare_tz_combo)
+        self._compare_tz_combo.bind("<<ComboboxSelected>>", self._persist_compare_timezone)
+
+        cb_enable = ttk.Checkbutton(
+            row1,
+            text=tr("clock_compare.enable"),
+            variable=self._enabled_var,
+            command=self._persist_enabled,
+        )
+        lbl_zone = ttk.Label(row1, text=tr("clock_compare.zone_label"), font=self._ui_font)
+        self._ref_tz_clock_lbl = ttk.Label(
+            row1,
+            text="",
+            font=self._ui_font,
+            foreground="#222",
+        )
+
+        self._ref_clock_after_id: Optional[int] = None
+
+        if rtl:
+            cb_enable.pack(side=tk.RIGHT)
+            lbl_zone.pack(side=tk.RIGHT, padx=8)
+            self._compare_tz_combo.pack(side=tk.RIGHT)
+            self._ref_tz_clock_lbl.pack(side=tk.RIGHT, padx=(12, 0))
+        else:
+            cb_enable.pack(side=tk.LEFT)
+            lbl_zone.pack(side=tk.LEFT, padx=(16, 8))
+            self._compare_tz_combo.pack(side=tk.LEFT)
+            self._ref_tz_clock_lbl.pack(side=tk.LEFT, padx=(12, 0))
+
+        desc_parts = [tr("clock_compare.settings_help")]
+        h2 = tr("clock_compare.settings_help_2").strip()
+        if h2:
+            desc_parts.append(h2)
+        desc_text = "\n".join(desc_parts)
+        if rtl:
+            desc_text = rtl_text_embed(desc_text)
+        desc_surveillance = ttk.Label(
+            settings,
+            text=desc_text,
+            font=self._ui_font,
+            foreground="#444",
+            wraplength=820,
+            justify=tk_justify_paragraph(),
+            anchor=tk_align_text(),
+        )
+        desc_surveillance.pack(fill=tk.X, anchor=tk_align_text(), pady=(10, 0))
+
+        self.update_idletasks()
+        try:
+            lbl_bg = self.cget("background")
+        except tk.TclError:
+            lbl_bg = "#f0f0f0"
+        bf = tkfont.Font(app, family=self._ui_font[0], size=max(int(self._ui_font[1]), 10), weight="bold")
+        self._tamper_lbl = tk.Label(
+            outer,
+            text=rtl_text_embed(tr("clock_compare.tamper_loading")),
+            font=bf,
+            wraplength=820,
+            justify=tk_justify_paragraph(),
+            anchor=tk_align_text(),
+            padx=8,
+            pady=18,
+            bg=lbl_bg,
+        )
+        self._tamper_lbl.pack(fill=tk.X, anchor=tk.CENTER)
+
+        btn_row = ttk.Frame(outer)
+        btn_row.pack(fill=tk.X, pady=(0, 8))
+        if rtl:
+            ttk.Button(btn_row, text=tr("clock_compare.refresh"), command=self._reload).pack(side=tk.RIGHT)
+        else:
+            ttk.Button(btn_row, text=tr("clock_compare.refresh"), command=self._reload).pack(side=tk.LEFT)
+
+        mid = ttk.Frame(outer)
+        mid.pack(fill=tk.BOTH, expand=True)
+
+        col_defs: list[tuple[str, str, int]] = [
+            ("checked_at", tr("clock_compare.col_checked_at"), 168),
+            ("skew", tr("clock_compare.col_skew"), 72),
+            ("zone", tr("clock_compare.col_zone"), 72),
+            ("reference_wall", tr("clock_compare.col_reference"), 158),
+            ("system_local_wall", tr("clock_compare.col_system_local"), 158),
+        ]
+        if rtl:
+            col_defs = list(reversed(col_defs))
+        cols = tuple(d[0] for d in col_defs)
+        self._tree_cols: tuple[str, ...] = cols
+
+        self._tree = ttk.Treeview(
+            mid,
+            columns=cols,
+            show="headings",
+            selectmode="browse",
+            style=ensure_compact_treeview_style(app),
+        )
+        col_anchor = tk.E if rtl else tk.W
+        for cid, header, w in col_defs:
+            self._tree.heading(cid, text=header)
+            self._tree.column(cid, width=w, anchor=col_anchor)
+
+        sb = ttk.Scrollbar(mid, orient=tk.VERTICAL, command=self._tree.yview)
+        self._tree.configure(yscrollcommand=sb.set)
+        if rtl:
+            sb.pack(side=tk.LEFT, fill=tk.Y)
+            self._tree.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
+        else:
+            self._tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+            sb.pack(side=tk.RIGHT, fill=tk.Y)
+
+        self.transient(app)
+        self.protocol("WM_DELETE_WINDOW", self._on_close_clock_compare)
+        self._schedule_ref_clock_tick()
+        self._reload()
+        try:
+            x = app.winfo_rootx() + 48
+            y = app.winfo_rooty() + 36
+            self.geometry(f"+{x}+{y}")
+        except tk.TclError:
+            pass
+
+    def _on_close_clock_compare(self) -> None:
+        aid = getattr(self, "_ref_clock_after_id", None)
+        if aid is not None:
+            try:
+                self.after_cancel(aid)
+            except tk.TclError:
+                pass
+            self._ref_clock_after_id = None
+        self.destroy()
+
+    def _update_ref_clock_display(self) -> None:
+        seq = list(range(-12, 15))
+        try:
+            i = self._compare_tz_combo.current()
+            off = seq[i] if 0 <= i < len(seq) else self._app._cfg.clock_compare_offset_hours  # type: ignore[attr-defined]
+        except (tk.TclError, TypeError, ValueError):
+            return
+        off = max(-12, min(14, int(off)))
+        try:
+            utc = clock_sync.effective_utc_now()
+            wall = clock_sync.wall_clock_naive_for_offset_hours(utc, off).replace(microsecond=0)
+            txt = wall.strftime("%Y-%m-%d %H:%M:%S")
+            src = tr("watch.src_ntp") if clock_sync.clock_source_was_ntp() else tr("watch.src_system")
+            self._ref_tz_clock_lbl.configure(text=tr("watch.ref_time", dt=txt, src=src))
+        except tk.TclError:
+            pass
+
+    def _schedule_ref_clock_tick(self) -> None:
+        prev = getattr(self, "_ref_clock_after_id", None)
+        if prev is not None:
+            try:
+                self.after_cancel(prev)
+            except tk.TclError:
+                pass
+            self._ref_clock_after_id = None
+
+        def tick() -> None:
+            self._ref_clock_after_id = None
+            try:
+                if not self.winfo_exists():
+                    return
+            except tk.TclError:
+                return
+            self._update_ref_clock_display()
+            try:
+                self._ref_clock_after_id = self.after(1000, tick)
+            except tk.TclError:
+                pass
+
+        self._update_ref_clock_display()
+        try:
+            self._ref_clock_after_id = self.after(1000, tick)
+        except tk.TclError:
+            pass
+
+    def _persist_enabled(self) -> None:
+        cfg: AppConfig = self._app._cfg  # type: ignore[attr-defined]
+        cfg.clock_compare_enabled = bool(self._enabled_var.get())
+        save_config(cfg)
+        self._reload()
+
+    def _persist_compare_timezone(self, _event: tk.Event | None = None) -> None:
+        seq = list(range(-12, 15))
+        i = self._compare_tz_combo.current()
+        if i < 0 or i >= len(seq):
+            return
+        cfg: AppConfig = self._app._cfg  # type: ignore[attr-defined]
+        h = seq[i]
+        if h != cfg.clock_compare_offset_hours:
+            cfg.clock_compare_offset_hours = h
+            save_config(cfg)
+        self._update_tamper_banner_async()
+        self._update_ref_clock_display()
+
+    def _reload(self) -> None:
+        cfg: AppConfig = self._app._cfg  # type: ignore[attr-defined]
+        _, entry = clock_compare_run(cfg, emit_log_entry=True)
+        if entry:
+            append_clock_compare_log_entries([entry])
+        self._fill_tree()
+        self._update_tamper_banner_async()
+
+    def _update_tamper_banner_async(self) -> None:
+        win = self
+
+        def work() -> None:
+            try:
+                changed = pc_clock_tamper_banner_red_this_week()
+            except Exception:
+                changed = False
+
+            def apply_ui() -> None:
+                try:
+                    if not win.winfo_exists():
+                        return
+                except tk.TclError:
+                    return
+                if changed:
+                    win._tamper_lbl.configure(
+                        text=rtl_text_embed(tr("clock_compare.tamper_yes")),
+                        fg="#b00000",
+                    )
+                else:
+                    win._tamper_lbl.configure(
+                        text=rtl_text_embed(tr("clock_compare.tamper_no")),
+                        fg="#0d8228",
+                    )
+
+            try:
+                win.after(0, apply_ui)
+            except tk.TclError:
+                pass
+
+        threading.Thread(target=work, daemon=True).start()
+
+    def _fill_tree(self) -> None:
+        for i in self._tree.get_children():
+            self._tree.delete(i)
+        rows = load_clock_compare_log_entries()
+        order = self._tree_cols
+        if not rows:
+            empty_row = {c: "" for c in order}
+            empty_row["checked_at"] = tr("clock_compare.empty")
+            self._tree.insert("", tk.END, values=tuple(empty_row[c] for c in order))
+            return
+        tz_labels = clock_sync.timezone_choice_labels()
+        for e in reversed(rows):
+            checked_at = str(e.get("checked_at", "") or "")
+            try:
+                skew_n = int(e.get("skew_seconds", 0))
+            except (TypeError, ValueError):
+                skew_n = 0
+            skew_disp = str(skew_n)
+            try:
+                zh = int(e.get("compare_utc_hours", 0))
+            except (TypeError, ValueError):
+                zh = 0
+            zh = max(-12, min(14, zh))
+            zone_txt = tz_labels[zh + 12]
+            ref_w = str(e.get("reference_wall", "") or "")
+            sys_w = str(e.get("system_local_wall", "") or "")
+            row_map = {
+                "checked_at": checked_at,
+                "skew": skew_disp,
+                "zone": zone_txt,
+                "reference_wall": ref_w,
+                "system_local_wall": sys_w,
+            }
+            self._tree.insert("", tk.END, values=tuple(row_map[c] for c in order))
+
+
 class GameFenceApp(tk.Tk):
     def __init__(self) -> None:
         super().__init__()
         self.withdraw()
-        self.title(tr("app.title"))
-        self.minsize(860, 540)
-        self.geometry("960x640")
 
         self._cfg: AppConfig = load_config()
         install_locale(normalize_locale(self._cfg.ui_locale), self)
+        self.title(tr("app.title"))
+        self.minsize(860, 540)
+        self.geometry("960x640")
         self._stop = threading.Event()
         self._thread: Optional[threading.Thread] = None
         self._log_lock = threading.Lock()
+        self._access_prev_running: dict[str, bool] = {}
         self._hotkey_unregister: Optional[Callable[[], None]] = None
         self._clock_tick_id: Optional[int] = None
+        self._clock_compare_after_id: Optional[int] = None
 
         self._build_ui()
         self._refresh_tree()
@@ -419,6 +839,13 @@ class GameFenceApp(tk.Tk):
 
     def destroy(self) -> None:
         self._unregister_global_hotkey()
+        cid = getattr(self, "_clock_compare_after_id", None)
+        if cid is not None:
+            try:
+                self.after_cancel(cid)
+            except tk.TclError:
+                pass
+            self._clock_compare_after_id = None
         super().destroy()
 
     def _build_ui(self) -> None:
@@ -433,6 +860,9 @@ class GameFenceApp(tk.Tk):
 
         menubar = tk.Menu(self)
         file_menu = tk.Menu(menubar, tearoff=0)
+        file_menu.add_command(label=tr("menu.access_log"), command=self._open_access_log)
+        file_menu.add_command(label=tr("menu.clock_compare_log"), command=self._open_clock_compare_log)
+        file_menu.add_separator()
         file_menu.add_command(label=tr("menu.quit"), command=self._quit_application)
         menubar.add_cascade(label=tr("menu.file"), menu=file_menu)
         lang_menu = tk.Menu(menubar, tearoff=0)
@@ -547,6 +977,41 @@ class GameFenceApp(tk.Tk):
             ttk.Button(btn, text=tr("btn.save"), command=self._save).pack(side=bp, padx=(16, 2))
 
         self._tick_clock_schedule()
+        self._schedule_clock_compare_loop()
+
+    def _schedule_clock_compare_loop(self) -> None:
+        cmp_prev = getattr(self, "_clock_compare_after_id", None)
+        if cmp_prev is not None:
+            try:
+                self.after_cancel(cmp_prev)
+            except tk.TclError:
+                pass
+            self._clock_compare_after_id = None
+
+        delay_ms = CLOCK_COMPARE_POLL_INTERVAL_SEC * 1000
+
+        def tick() -> None:
+            self._clock_compare_after_id = None
+            try:
+                if not self.winfo_exists():
+                    return
+            except tk.TclError:
+                return
+            self._run_clock_compare_tick()
+            try:
+                self._clock_compare_after_id = self.after(delay_ms, tick)
+            except tk.TclError:
+                pass
+
+        try:
+            self._clock_compare_after_id = self.after(delay_ms, tick)
+        except tk.TclError:
+            pass
+
+    def _run_clock_compare_tick(self) -> None:
+        _, entry = clock_compare_run(self._cfg)
+        if entry:
+            append_clock_compare_log_entries([entry])
 
     def _tick_clock_display(self) -> None:
         try:
@@ -665,6 +1130,12 @@ class GameFenceApp(tk.Tk):
         except tk.TclError:
             pass
 
+    def _open_access_log(self) -> None:
+        AccessLogWindow(self)
+
+    def _open_clock_compare_log(self) -> None:
+        ClockCompareWindow(self)
+
     def _quit_application(self) -> None:
         self._stop_worker()
         try:
@@ -768,6 +1239,11 @@ class GameFenceApp(tk.Tk):
             iv = max(5, min(600, iv))
             if self._watch_var.get():
                 clock_sync.maybe_resync_ntp()
+                access_rows, self._access_prev_running = scan_rule_exe_access_events(
+                    self._cfg, self._access_prev_running
+                )
+                if access_rows:
+                    append_access_log_entries(access_rows)
                 killed = enforce_rules(self._cfg)
                 if killed:
                     for exe, title in killed:

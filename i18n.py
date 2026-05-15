@@ -78,6 +78,7 @@ def _apply_ui_fonts(root: Any | None) -> None:
         return
     if not isinstance(root, tk.Misc):
         return
+    setattr(root, "_gamefence_compact_tree_ready", False)
     ui_name = _bundle.get("font_ui") or "Segoe UI"
     mono_name = _bundle.get("font_mono") or "Consolas"
     ui_font = (str(ui_name), 9)
@@ -194,6 +195,41 @@ def ui_font_tuple(root: Any) -> tuple[str, int]:
     if isinstance(f, tuple) and len(f) >= 2:
         return (str(f[0]), int(f[1]))
     return ("Segoe UI", 9)
+
+
+_COMPACT_TREE_STYLE = "GameFenceCompact.Treeview"
+
+
+def ensure_compact_treeview_style(root: Any) -> str:
+    """
+    Treeview une ligne (fenêtres journal). La fenêtre principale impose une rowheight ~ ×7
+    pour la colonne planning ; sans style dédié les journaux héritent de cette hauteur.
+    """
+    if not isinstance(root, tk.Misc):
+        return "Treeview"
+    if getattr(root, "_gamefence_compact_tree_ready", False):
+        return _COMPACT_TREE_STYLE
+    rtl_ui = bool(getattr(root, "_gamefence_rtl", False))
+    ui_f = ui_font_tuple(root)
+    try:
+        style = ttk.Style(root)
+        try:
+            fn = tkfont.Font(root, family=str(ui_f[0]), size=int(ui_f[1]))
+            line_px = max(int(fn.metrics("linespace")), 14)
+            row_h = min(line_px + 8, 44)
+        except (tk.TclError, TypeError, ValueError):
+            row_h = 26
+        tree_kw: dict[str, Any] = {"font": ui_f, "rowheight": row_h}
+        heading_kw: dict[str, Any] = {"font": ui_f}
+        if rtl_ui:
+            tree_kw["anchor"] = tk.E
+            heading_kw["anchor"] = tk.E
+        style.configure(_COMPACT_TREE_STYLE, **tree_kw)
+        style.configure(f"{_COMPACT_TREE_STYLE}.Heading", **heading_kw)
+        setattr(root, "_gamefence_compact_tree_ready", True)
+    except tk.TclError:
+        return "Treeview"
+    return _COMPACT_TREE_STYLE
 
 
 def mono_font_tuple(root: Any) -> tuple[str, int]:

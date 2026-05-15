@@ -7,6 +7,8 @@
 
   "app.title": "Game Fence — Blocage par horaire",
   "menu.file": "Fichier",
+  "menu.access_log": "Journal des ouvertures…",
+  "menu.clock_compare_log": "Journal horloge / fuseau…",
   "menu.quit": "Quitter complètement",
   "menu.language": "Langue",
 
@@ -38,6 +40,34 @@
   "btn.save": "Enregistrer la configuration",
 
   "log.recent": "Journal récent",
+
+  "access_log.title": "Journal des ouvertures (exécutables des règles)",
+  "access_log.col_time": "Date et heure",
+  "access_log.col_exe": "Exécutable",
+  "access_log.col_name": "Nom affiché",
+  "access_log.col_event": "Événement",
+  "access_log.kind_opened": "Ouvert (créneau autorisé)",
+  "access_log.kind_attempt_blocked": "Tentative d’ouverture (créneau bloqué)",
+  "access_log.refresh": "Actualiser",
+  "access_log.empty": "(aucune entrée pour le moment)",
+  "access_log.hint": "Les lignes sont enregistrées dans : {path}",
+
+  "clock_compare.title": "Journal — horloge et fuseau",
+  "clock_compare.settings_frame": "Surveillance",
+  "clock_compare.enable": "Surveiller écart mur réf. / heure locale",
+  "clock_compare.zone_label": "Fuseau d’affichage de référence :",
+  "clock_compare.settings_help": "Les lignes enregistrées dans le fichier journal (tableau ci‑dessous) repèrent les grands écarts entre l’heure murale de référence et l’heure locale du PC ; une modification de date ou d’heure peut servir à contourner les plages horaires. Le bandeau gras sous cette zone résume si ce cas est détecté pour la semaine en cours.",
+  "clock_compare.settings_help_2":"",
+  "clock_compare.tamper_loading": "…",
+  "clock_compare.tamper_yes": "L’utilisateur a changé la date et heure du PC pour contourner cette semaine",
+  "clock_compare.tamper_no": "L’utilisateur n’a pas tenté de changer la date et l’heure du PC cette semaine",
+  "clock_compare.col_checked_at": "Contrôle (UTC)",
+  "clock_compare.col_skew": "Écart mur./loc. (s)",
+  "clock_compare.col_zone": "Fuseau réf.",
+  "clock_compare.col_reference": "Référence (murale)",
+  "clock_compare.col_system_local": "Système (local PC)",
+  "clock_compare.refresh": "Actualiser / mesurer",
+  "clock_compare.empty": "(aucun écart notable enregistré)",
 
   "msg.keyboard_title": "Module « keyboard » absent",
   "msg.keyboard_body": "Installez le paquet :\n\n  pip install keyboard\n\npour utiliser le raccourci {hotkey} (seul moyen d’ouvrir l’interface : l’app démarre masquée).",
